@@ -35,8 +35,8 @@ jobs:
         run: make collegevine
         
       # Runs a single command using the runners shell
-      - name: Build collegevine-hub
-        run: make collegevine-hub
+#      - name: Build collegevine-hub
+#        run: make collegevine-hub
         
 
       - name: Upload a Build Artifact
