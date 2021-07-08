@@ -28,6 +28,10 @@ jobs:
       # Runs a single command using the runners shell
       - name: Build pivot
         run: make pivot
+        
+              # Runs a single command using the runners shell
+      - name: debug pivot
+        run: ls
 
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v2.2.4
@@ -35,5 +39,5 @@ jobs:
         # Artifact name
          name: pivot
           # A file, directory or wildcard pattern that describes what to upload
-         path: ./bin/v2/pivot/*
+         path: ./bin/v2/
   
