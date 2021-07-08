@@ -29,15 +29,21 @@ jobs:
       - name: Build pivot
         run: make pivot
         
-              # Runs a single command using the runners shell
-      - name: debug pivot
-        run: ls
+        
+      # Runs a single command using the runners shell
+      - name: Build collegevine
+        run: make collegevine
+        
+      # Runs a single command using the runners shell
+      - name: Build collegevine-hub
+        run: make collegevine-hub
+        
 
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v2.2.4
         with:
         # Artifact name
-         name: pivot
+         name: build
           # A file, directory or wildcard pattern that describes what to upload
          path: ./bin/v2/
   
