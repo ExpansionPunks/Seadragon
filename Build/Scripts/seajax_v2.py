@@ -95,7 +95,7 @@ def build_specific(target, type):
     call(
         [
             "npx",
-            "babel",
+            "babel-cli",
             PATH_COMPILED_FILES,
             "--config-file",
             "../../.babelrc.json",
