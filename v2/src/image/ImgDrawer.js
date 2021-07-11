@@ -68,7 +68,10 @@ SDImgDrawerPrototype.drawTile = function (img, tile, levelView) {
     // create and use a copy of the image, not the original
     imgCopy.src = img.src;
     imgStyle.position = "absolute";
-    imgStyle.msInterpolationMode = SDImgDrawer_MS_INTERPOLATION_MODE;
+   // imgStyle.msInterpolationMode = SDImgDrawer_MS_INTERPOLATION_MODE;
+    imgStyle.image-rendering: pixelated;
+    imgStyle.image-rendering: -moz-crisp-edges;
+    imgStyle.image-rendering: crisp-edges;
     
     if (srcRect) {
         
