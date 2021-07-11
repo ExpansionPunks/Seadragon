@@ -31,8 +31,8 @@ jobs:
         
         
       # Runs a single command using the runners shell
-      - name: Build collegevine
-        run: make collegevine
+     # - name: Build collegevine
+      #  run: make collegevine
         
       # Runs a single command using the runners shell
 #      - name: Build collegevine-hub
