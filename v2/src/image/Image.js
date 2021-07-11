@@ -179,7 +179,7 @@ SDImagePrototype.blur = 0;
 (function() {
     var head, style, text,
         selector = "sdimg",
-        styleRules = "display:inline-block",
+        styleRules = "display:inline-block; image-rendering: crisp-edges;",
         styleString = selector + " {" + styleRules + "}";
 
     if (document.createStyleSheet) {
