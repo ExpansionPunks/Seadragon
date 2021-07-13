@@ -27,7 +27,7 @@ jobs:
 
       # Runs a single command using the runners shell
       - name: Build pivot
-        run: make pivot
+        run: make collegevine
         
         
       # Runs a single command using the runners shell
