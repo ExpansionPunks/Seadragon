@@ -541,6 +541,8 @@ SDImage.drawImage = function (ctx, image, sx, sy, sw, sh, dx, dy, dw, dh, item) 
         fullyDrawn = true,
         maxLevel;
 
+  // this is the fix for having pixelated full resolution punks
+    ctx.imageSmoothingEnabled = false;
     // We're not interested in the Image, just its ImageState.
     image = image.state;
     if (!image) {
