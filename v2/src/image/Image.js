@@ -30,71 +30,63 @@
   SDTileSource*/
 /*jshint strict: false */
 
-var
+var // Just a function, defined here to make JSLint happy
+  SDImage_init,
+  /**
+   * A Deep Zoom image element. Images created this way are HTML elements with
+   * tag sdimg that can be placed in a web page and used like a regular img
+   * element. In particular, the developer can set the src property of an
+   * Image to any deep zoom content, and the Image will get a load event
+   * when its XML content has been loaded. Images can also be constructed
+   * via document.createElement("sdimg").
+   * @class Image
+   * @namespace Seadragon2
+   * @constructor
+   * @param {Object} opts An object that can override the default properties
+   * of the Image. Any property specified in this object will be applied to
+   * the Image during its construction. Note that the manualUpdates property
+   * is unique in that it can only be specified in the opts argument. By
+   * default, the new Image is set up for automatic updates in the constructor.
+   * @param {HTMLElement} element? (optional) An existing HTML element to augment.
+   */
+  SDImage = (SD.Image = function (opts, element) {
+    // override the default options (defined by this class's prototype) with
+    // the given ones:
+    SDObject_extend(this, opts);
 
-    // Just a function, defined here to make JSLint happy
-    SDImage_init,
+    // The image state. Will be empty until the TileSource is ready.
+    this.state = null;
 
-    /**
-     * A Deep Zoom image element. Images created this way are HTML elements with
-     * tag sdimg that can be placed in a web page and used like a regular img
-     * element. In particular, the developer can set the src property of an
-     * Image to any deep zoom content, and the Image will get a load event
-     * when its XML content has been loaded. Images can also be constructed
-     * via document.createElement("sdimg").
-     * @class Image
-     * @namespace Seadragon2
-     * @constructor
-     * @param {Object} opts An object that can override the default properties
-     * of the Image. Any property specified in this object will be applied to
-     * the Image during its construction. Note that the manualUpdates property
-     * is unique in that it can only be specified in the opts argument. By
-     * default, the new Image is set up for automatic updates in the constructor.
-     * @param {HTMLElement} element? (optional) An existing HTML element to augment.
-     */
-    SDImage = SD.Image = function (opts, element) {
+    // "Private" properties
+    this.lastSrc = ""; // the starting and previously read src value
+    this.container = document.createElement("div"); // container for canvases
 
-        // override the default options (defined by this class's prototype) with
-        // the given ones:
-        SDObject_extend(this, opts);
+    // <img> properties
+    if (element && element.attributes.src) {
+      this.src = element.attributes.src.value;
+    } else {
+      this.src = this.lastSrc;
+    }
 
-        // The image state. Will be empty until the TileSource is ready.
-        this.state = null;
+    this.complete = true;
+    // keep in mind we don't have settable width/height.
 
-        // "Private" properties
-        this.lastSrc = "";          // the starting and previously read src value
-        this.container = document.createElement("div");     // container for canvases
-
-        // <img> properties
-        if (element && element.attributes.src) {
-            this.src = element.attributes.src.value;
-        } else {
-            this.src = this.lastSrc;
-        }
-
-        this.complete = true;
-        // keep in mind we don't have settable width/height.
-
-        // boilerplate code to extend and initialize a regular HTML element with
-        // the properties and methods of this class and instance:
-        if (!element) {
-            // it's important that we use the original document.createElement, not
-            // the overwritten one.
-            element = SDElement_dce.call(document, "sdimg");
-        }
-        return SDImage_init(SDObject_extend(
-            element, this, true));
-
-    },
-
-    SDImagePrototype = SDImage.prototype,
-
-    // device pixel ratio: some platforms like iPhone4 report fewer CSS pixels
-    // than they actually have on the screen, so we'll use higher-res accordingly
-    SDImage_pixelRatio = 0;
+    // boilerplate code to extend and initialize a regular HTML element with
+    // the properties and methods of this class and instance:
+    if (!element) {
+      // it's important that we use the original document.createElement, not
+      // the overwritten one.
+      element = SDElement_dce.call(document, "sdimg");
+    }
+    return SDImage_init(SDObject_extend(element, this, true));
+  }),
+  SDImagePrototype = SDImage.prototype,
+  // device pixel ratio: some platforms like iPhone4 report fewer CSS pixels
+  // than they actually have on the screen, so we'll use higher-res accordingly
+  SDImage_pixelRatio = 0;
 
 if (typeof devicePixelRatio !== "undefined") {
-    SDImage_pixelRatio = SDMath_log2(devicePixelRatio);
+  SDImage_pixelRatio = SDMath_log2(devicePixelRatio);
 }
 
 // set up document.createElement to make sdimg tags
@@ -176,258 +168,271 @@ SDImagePrototype.blur = 0;
 
 // Also set up a stylesheet specifying any standard styles:
 
-(function() {
-    var head, style, text,
-        selector = "sdimg",
-        styleRules = "display:inline-block; image-rendering: crisp-edges;",
-        styleString = selector + " {" + styleRules + "}";
+(
+  (function () {
+    var head,
+      style,
+      text,
+      selector = "sdimg",
+      styleRules = "display:inline-block; image-rendering: crisp-edges;",
+      styleString = selector + " {" + styleRules + "}";
 
     if (document.createStyleSheet) {
-        // The IE way. Unfortunately document.createStyleSheet(undefined, 0)
-        // doesn't create a blank style and put it first, it creates a link
-        // element with href="undefined". So to ensure that our rule always
-        // is first, we'll try to hijack an existing stylesheet, and
-        // only create a new one if there aren't any others yet.
+      // The IE way. Unfortunately document.createStyleSheet(undefined, 0)
+      // doesn't create a blank style and put it first, it creates a link
+      // element with href="undefined". So to ensure that our rule always
+      // is first, we'll try to hijack an existing stylesheet, and
+      // only create a new one if there aren't any others yet.
 
-        try {
-            if (document.styleSheets.length > 0) {
-                // put the rule into an existing style sheet
-                style = document.styleSheets[0];
-            } else {
-                // if no style sheets exist yet, create a new one
-                style = document.createStyleSheet();
-            }
-            // insert our new rule into the sheet
-            style.addRule(selector, styleRules, 0);
-        } catch (e) {
-            // It's possible to fail here since pages are limited to 31 stylesheets
-            // and 4095 rules per sheet.
-            SDDebug_warn("Error while creating default styles: " + e.message);
+      try {
+        if (document.styleSheets.length > 0) {
+          // put the rule into an existing style sheet
+          style = document.styleSheets[0];
+        } else {
+          // if no style sheets exist yet, create a new one
+          style = document.createStyleSheet();
         }
-
+        // insert our new rule into the sheet
+        style.addRule(selector, styleRules, 0);
+      } catch (e) {
+        // It's possible to fail here since pages are limited to 31 stylesheets
+        // and 4095 rules per sheet.
+        SDDebug_warn("Error while creating default styles: " + e.message);
+      }
     } else {
-        // The basic DOM manipulation way. Create a style, make it be
-        // the first thing in <head>.
+      // The basic DOM manipulation way. Create a style, make it be
+      // the first thing in <head>.
 
-        head = document.documentElement.firstChild;
+      head = document.documentElement.firstChild;
 
-        style = document.createElement("style");
-        text = document.createTextNode(styleString);
-        style.appendChild(text);
-        head.insertBefore(style, head.firstChild);
+      style = document.createElement("style");
+      text = document.createTextNode(styleString);
+      style.appendChild(text);
+      head.insertBefore(style, head.firstChild);
     }
-}());
+  })()
+);
 
 // Pseudo-instance methods for tracking high-level state:
 
 function SDImage_onSrcClear(sdImg) {
-    // clear and reset the state
-    if (sdImg.state) {
-        sdImg.state.destroy();
-    }
-    sdImg.state = null;
+  // clear and reset the state
+  if (sdImg.state) {
+    sdImg.state.destroy();
+  }
+  sdImg.state = null;
 }
 
 // when a TileSource instance is ready to be drawn, e.g. if src was set to a
 // DZI/DZC URL, and the tile source for that DZI/DZC is now loaded.
 function SDImage_onTileSourceLoad(sdImg, source, error) {
-    // check whether the node is in the DOM
-    if (sdImg.immediateMode && sdImg.parentNode) {
-        sdImg.immediateMode = false;
-    } else {
-        // turns out checking for parentNode is pretty expensive (like every other DOM operation),
-        // so we'll skip it more often than not. We'll keep a counter tracking how many times
-        // we've skipped it, so that we still periodically check whether the image should
-        // be set up with a Drawer.
-        sdImg.skippedParentCheck = SDMath_floor(Math.random() * 30);
-    }
+  // check whether the node is in the DOM
+  if (sdImg.immediateMode && sdImg.parentNode) {
+    sdImg.immediateMode = false;
+  } else {
+    // turns out checking for parentNode is pretty expensive (like every other DOM operation),
+    // so we'll skip it more often than not. We'll keep a counter tracking how many times
+    // we've skipped it, so that we still periodically check whether the image should
+    // be set up with a Drawer.
+    sdImg.skippedParentCheck = SDMath_floor(Math.random() * 30);
+  }
 
-    // If the Image was created for immediate mode rendering, then it will
-    // be drawn onscreen via method calls, not automatically.
-    var drawer = (sdImg.immediateMode) ?
-        SDDrawer_nullDrawer :
-        SDDrawer_$(sdImg.container, source.normHeight);
+  // If the Image was created for immediate mode rendering, then it will
+  // be drawn onscreen via method calls, not automatically.
+  var drawer = sdImg.immediateMode
+    ? SDDrawer_nullDrawer
+    : SDDrawer_$(sdImg.container, source.normHeight);
 
-    sdImg.state = new SDImageState(
-        source,
-        drawer,
-        sdImg.blendTime,
-        sdImg.fadeTime
-    );
+  sdImg.state = new SDImageState(
+    source,
+    drawer,
+    sdImg.blendTime,
+    sdImg.fadeTime
+  );
 
-    // Now fire a load event so that any user-defined logic can happen.
-    // Note that standard load events, such as on the img element,
-    // capture but don't bubble.
-    SDEvent_raise(sdImg, "load", false);
+  // Now fire a load event so that any user-defined logic can happen.
+  // Note that standard load events, such as on the img element,
+  // capture but don't bubble.
+  SDEvent_raise(sdImg, "load", false);
 
-    // then begin drawing!
-    // We'll skip it for now, someone will call update soon enough.
-    /*if (!sdImg.manualUpdates) {
+  // then begin drawing!
+  // We'll skip it for now, someone will call update soon enough.
+  /*if (!sdImg.manualUpdates) {
         SDImage_onTickSrcSet(sdImg);
     }*/
 }
 
 function SDImage_fetchSrc(sdImg, src) {
-    SDDeepZoom_fetchTileSource(src, function (tileSource) {
-        if (tileSource instanceof SDTileSource) {
-            SDImage_onTileSourceLoad(sdImg, tileSource);
-        } else {
-            SDDebug_warn("SDImage: failed to fetch tile source at " + src);
-        }
-    });
+  SDDeepZoom_fetchTileSource(src, function (tileSource) {
+    if (tileSource instanceof SDTileSource) {
+      SDImage_onTileSourceLoad(sdImg, tileSource);
+    } else {
+      SDDebug_warn("SDImage: failed to fetch tile source at " + src);
+    }
+  });
 }
 
 function SDImage_onSrcSet(sdImg) {
-    var src = sdImg.src,
-        srcType = typeof src;
+  var src = sdImg.src,
+    srcType = typeof src;
 
-    // either fetch the TileSource (if src is URL), or begin drawing it!
-    if (srcType === "string") {
-        // begin loading the URL
-        SDImage_fetchSrc(sdImg, src);
-    } else if (srcType === "object") {
-        SDImage_onTileSourceLoad(sdImg, SDTileSource_$(src));
-    } else {
-        SDDebug_error("Unsupported src type: " + srcType);
-    }
+  // either fetch the TileSource (if src is URL), or begin drawing it!
+  if (srcType === "string") {
+    // begin loading the URL
+    SDImage_fetchSrc(sdImg, src);
+  } else if (srcType === "object") {
+    SDImage_onTileSourceLoad(sdImg, SDTileSource_$(src));
+  } else {
+    SDDebug_error("Unsupported src type: " + srcType);
+  }
 }
 
 // this.src was previously set to something non-empty, and now it's changed to
 // something else non-empty.
 function SDImage_onSrcChange(sdImg) {
-    SDImage_onSrcClear(sdImg);
-    SDImage_onSrcSet(sdImg);
+  SDImage_onSrcClear(sdImg);
+  SDImage_onSrcSet(sdImg);
 }
 
 function SDImage_onTickSrcEmpty(sdImg) {
-    // nothing to do!
+  // nothing to do!
 }
 
 function SDImage_onTickSrcSet(sdImg, position, clip) {
-    // if src was set to an URL, we may be waiting for it to be downloaded
-    if (!sdImg.state) {
-        return;
-    }
+  // if src was set to an URL, we may be waiting for it to be downloaded
+  if (!sdImg.state) {
+    return;
+  }
 
-    // check whether the image was just added to the DOM
-    if (sdImg.immediateMode) {
-        // we perform this check relatively infrequently because it's expensive.
-        if (sdImg.skippedParentCheck > 30) {
-            if (sdImg.parentNode) {
-                // we have to build a real Drawer now, since the node is present onscreen.
-                // easiest way to accomplish that is to reset the image state.
-                sdImg.immediateMode = false;
-                SDImage_onTileSourceLoad(sdImg, sdImg.state.source);
-            }
-            sdImg.skippedParentCheck = 0;
-        } else {
-            sdImg.skippedParentCheck++;
-        }
-    }
-
-    // find the container object's current position and such
-    var container = sdImg.container,
-        boundingRect = position || SDElement_getBoundingClientRect(container),
-        curWidth = boundingRect.width,
-        curHeight = boundingRect.height,
-        windowDimensions,
-        curClip;
-    if (position || clip) {
-        curClip = clip;
+  // check whether the image was just added to the DOM
+  if (sdImg.immediateMode) {
+    // we perform this check relatively infrequently because it's expensive.
+    if (sdImg.skippedParentCheck > 30) {
+      if (sdImg.parentNode) {
+        // we have to build a real Drawer now, since the node is present onscreen.
+        // easiest way to accomplish that is to reset the image state.
+        sdImg.immediateMode = false;
+        SDImage_onTileSourceLoad(sdImg, sdImg.state.source);
+      }
+      sdImg.skippedParentCheck = 0;
     } else {
-        windowDimensions = SDElement_getWindowDimensions();
-        if (sdImg.clipParent) {
-            windowDimensions = windowDimensions.intersect(SDElement_getBoundingClientRect(sdImg.clipParent));
-            if (!windowDimensions) {
-                windowDimensions = new SDRect(0, 0, 0, 0);
-            }
-        }
-        curClip = SDElement_getClippingBounds(container, boundingRect, windowDimensions);
+      sdImg.skippedParentCheck++;
     }
+  }
 
-    // if we're collapsed or removed from the DOM, do nothing
-    if (!curWidth || !curHeight) {
-        return;
+  // find the container object's current position and such
+  var container = sdImg.container,
+    boundingRect = position || SDElement_getBoundingClientRect(container),
+    curWidth = boundingRect.width,
+    curHeight = boundingRect.height,
+    windowDimensions,
+    curClip;
+  if (position || clip) {
+    curClip = clip;
+  } else {
+    windowDimensions = SDElement_getWindowDimensions();
+    if (sdImg.clipParent) {
+      windowDimensions = windowDimensions.intersect(
+        SDElement_getBoundingClientRect(sdImg.clipParent)
+      );
+      if (!windowDimensions) {
+        windowDimensions = new SDRect(0, 0, 0, 0);
+      }
     }
+    curClip = SDElement_getClippingBounds(
+      container,
+      boundingRect,
+      windowDimensions
+    );
+  }
 
-    // the update method expects a position centered around (0,0) for foviation.
-    if (!position) {
-        boundingRect.x -= windowDimensions.width / 2;
-        boundingRect.y -= windowDimensions.height / 2;
-    }
+  // if we're collapsed or removed from the DOM, do nothing
+  if (!curWidth || !curHeight) {
+    return;
+  }
 
-    // The rest of the update logic isn't specific to HTML, so call the update
-    // method defined in ImageController.
-    sdImg.state.update(boundingRect, curClip, sdImg.blur - SDImage_pixelRatio);
+  // the update method expects a position centered around (0,0) for foviation.
+  if (!position) {
+    boundingRect.x -= windowDimensions.width / 2;
+    boundingRect.y -= windowDimensions.height / 2;
+  }
+
+  // The rest of the update logic isn't specific to HTML, so call the update
+  // method defined in ImageController.
+  sdImg.state.update(boundingRect, curClip, sdImg.blur - SDImage_pixelRatio);
 }
 
 function SDImage_onTick(sdImg, now, position, clip) {
-    var lastSrc = sdImg.lastSrc, src = sdImg.src;
+  var lastSrc = sdImg.lastSrc,
+    src = sdImg.src;
 
-    // case 1: previously empty src, now set
-    if (!lastSrc && src) {
-        SDImage_onSrcSet(sdImg);
-    }
+  // case 1: previously empty src, now set
+  if (!lastSrc && src) {
+    SDImage_onSrcSet(sdImg);
+  }
 
-    // case 2: previously set src, now empty
-    else if (lastSrc && !src) {
-        SDImage_onSrcClear(sdImg);
-    }
+  // case 2: previously set src, now empty
+  else if (lastSrc && !src) {
+    SDImage_onSrcClear(sdImg);
+  }
 
-    // case 3: changed non-empty src
-    else if (src !== lastSrc) {
-        SDImage_onSrcChange(sdImg);
-    }
+  // case 3: changed non-empty src
+  else if (src !== lastSrc) {
+    SDImage_onSrcChange(sdImg);
+  }
 
-    // case 4: nothing changed, and src is empty
-    else if (!src) {
-        SDImage_onTickSrcEmpty(sdImg);
-    }
+  // case 4: nothing changed, and src is empty
+  else if (!src) {
+    SDImage_onTickSrcEmpty(sdImg);
+  }
 
-    // case 5: nothing changed, and src is non-empty
-    else if (src) {
-        SDImage_onTickSrcSet(sdImg, position, clip);
-    }
+  // case 5: nothing changed, and src is non-empty
+  else if (src) {
+    SDImage_onTickSrcSet(sdImg, position, clip);
+  }
 
-    // default case: unknown?
-    else {
-        SDDebug_warn("SDImage_onTick: unknown state! " +
-            "src={0}, lastSrc={1}", src, lastSrc);
-    }
+  // default case: unknown?
+  else {
+    SDDebug_warn(
+      "SDImage_onTick: unknown state! " + "src={0}, lastSrc={1}",
+      src,
+      lastSrc
+    );
+  }
 
-    // in all cases, remember what the src is now
-    sdImg.lastSrc = src;
+  // in all cases, remember what the src is now
+  sdImg.lastSrc = src;
 
-    // since we're calling this in a Timer, we need to return true to stay registered
-    return true;
+  // since we're calling this in a Timer, we need to return true to stay registered
+  return true;
 }
 
 // Pseudo-instance methods for initializing images:
 
 SDImage_init = function (sdImg) {
-    var container = sdImg.container,
-        containerStyle = container.style;
+  var container = sdImg.container,
+    containerStyle = container.style;
 
-    // mark the container div as part of the sdimg
-    container.className = "sdimgcontainerdiv";
+  // mark the container div as part of the sdimg
+  container.className = "sdimgcontainerdiv";
 
-    // we'll be putting our canvases into this container dynamically
-    containerStyle.textAlign = "left";      // fix for IE7!
-    containerStyle.overflow = "hidden";
+  // we'll be putting our canvases into this container dynamically
+  containerStyle.textAlign = "left"; // fix for IE7!
+  containerStyle.overflow = "hidden";
 
-    if (sdImg.style) {
-        sdImg.appendChild(container);
-        containerStyle.position = "relative";
-        containerStyle.width = containerStyle.height = "100%";
-    }
+  if (sdImg.style) {
+    sdImg.appendChild(container);
+    containerStyle.position = "relative";
+    containerStyle.width = containerStyle.height = "100%";
+  }
 
-    // unless this <sdimg> is to be managed manually, register it for automatic
-    // global updates
-    if (!sdImg.manualUpdates) {
-        sdImg.timerID = SDImageManager.register(SDImage_onTick, sdImg);
-    }
+  // unless this <sdimg> is to be managed manually, register it for automatic
+  // global updates
+  if (!sdImg.manualUpdates) {
+    sdImg.timerID = SDImageManager.register(SDImage_onTick, sdImg);
+  }
 
-    return sdImg;
+  return sdImg;
 };
 
 /**
@@ -457,7 +462,7 @@ SDImage_init = function (sdImg) {
  * @param {Rect} clip? The Image's current clipping rectangle.
  */
 SDImagePrototype.update = function (position, clip) {
-    SDImage_onTick(this, null, position, clip);
+  SDImage_onTick(this, null, position, clip);
 };
 
 /**
@@ -466,10 +471,10 @@ SDImagePrototype.update = function (position, clip) {
  * @method destroy
  */
 SDImagePrototype.destroy = function () {
-    this.drawer.destroy();
-    if (this.timerID) {
-        SDImageManager.unregister(this.timerID);
-    }
+  this.drawer.destroy();
+  if (this.timerID) {
+    SDImageManager.unregister(this.timerID);
+  }
 };
 
 // This API is public, mimics the ctx.drawImage() call.
@@ -516,142 +521,165 @@ SDImagePrototype.destroy = function () {
  * @return {bool} whether the image was drawn at full resolution, with no
  * tiles blending, fading, or loading
  */
-SDImage.drawImage = function (ctx, image, sx, sy, sw, sh, dx, dy, dw, dh, item) {
-    var normHeight,
-        levels,
-        i, j, k,
-        level,
-        levelOpacity,
-        levelBounds,
-        tiles,
-        leftCol,
-        rightCol,
-        topRow,
-        bottomRow,
-        column,
-        tile,
-        opacity,
-        srcRect,
-        tileBounds,
-        destX,
-        destY,
-        destWidth,
-        destHeight,
-        clipping,
-        fullyDrawn = true,
-        maxLevel;
+SDImage.drawImage = function (
+  ctx,
+  image,
+  item,
+  sx,
+  sy,
+  sw,
+  sh,
+  dx,
+  dy,
+  dw,
+  dh
+) {
+  var normHeight,
+    levels,
+    i,
+    j,
+    k,
+    level,
+    levelOpacity,
+    levelBounds,
+    tiles,
+    leftCol,
+    rightCol,
+    topRow,
+    bottomRow,
+    column,
+    tile,
+    opacity,
+    srcRect,
+    tileBounds,
+    destX,
+    destY,
+    destWidth,
+    destHeight,
+    clipping,
+    fullyDrawn = true,
+    maxLevel;
 
   // this is the fix for having pixelated full resolution punks
-    ctx.imageSmoothingEnabled = false;
-    // We're not interested in the Image, just its ImageState.
-    image = image.state;
-    if (!image) {
-        SDDebug_warn("Image.drawImage: Image isn't ready yet!");
-        return false;
-    }
+  ctx.imageSmoothingEnabled = false;
+  // We're not interested in the Image, just its ImageState.
+  image = image.state;
+  if (!image) {
+    SDDebug_warn("Image.drawImage: Image isn't ready yet!");
+    return false;
+  }
 
-    maxLevel = image.maxLevel;
+  maxLevel = image.maxLevel;
 
-    // parse arguments to figure out the coordinates.
-    if (sw === undefined) {
-        dx = sx;
-        dy = sy;
-        dw = image.position.width;
-        dh = image.position.height;
-    } else if (dx === undefined) {
-        dx = sx;
-        dy = sy;
-        dw = sw;
-        dh = sh;
-    } else {
-        // There may be more efficient ways of doing this, but we'll use a
-        // rectangular clip path. Source coordinates are expected to be in
-        // pixel values, i.e. relative to the width and height provided to
-        // the image element in its update method.
+  // parse arguments to figure out the coordinates.
+  if (sw === undefined) {
+    dx = sx;
+    dy = sy;
+    dw = image.position.width;
+    dh = image.position.height;
+  } else if (dx === undefined) {
+    dx = sx;
+    dy = sy;
+    dw = sw;
+    dh = sh;
+  } else {
+    // There may be more efficient ways of doing this, but we'll use a
+    // rectangular clip path. Source coordinates are expected to be in
+    // pixel values, i.e. relative to the width and height provided to
+    // the image element in its update method.
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(dx, dy, dw, dh);
+    ctx.clip();
+    clipping = true;
+
+    // Now change the destination coordinates so that the part visible
+    // through the clip rectangle is the desired portion of the source image.
+    dx -= (sx * dw) / sw;
+    dy -= (sy * dh) / sh;
+    dw *= image.position.width / sw;
+    dh *= image.position.height / sh;
+  }
+
+  normHeight = image.source.normHeight;
+  levels = image.levels;
+
+  // iterate over each level, drawing everything we find
+  for (i = image.source.minLevel; !!(level = levels[i]); i++) {
+    if (level.visible) {
+      levelBounds = level.bounds;
+      levelOpacity = level.opacity;
+      if (levelOpacity !== 1) {
         ctx.save();
-        ctx.beginPath();
-        ctx.rect(dx, dy, dw, dh);
-        ctx.clip();
-        clipping = true;
-
-        // Now change the destination coordinates so that the part visible
-        // through the clip rectangle is the desired portion of the source image.
-        dx -= sx * dw / sw;
-        dy -= sy * dh / sh;
-        dw *= image.position.width / sw;
-        dh *= image.position.height / sh;
-    }
-
-    normHeight = image.source.normHeight;
-    levels = image.levels;
-
-    // iterate over each level, drawing everything we find
-    for (i = image.source.minLevel; !!(level = levels[i]); i++) {
-        if (level.visible) {
-            levelBounds = level.bounds;
-            levelOpacity = level.opacity;
-            if (levelOpacity !== 1) {
-                ctx.save();
-                ctx.globalAlpha *= levelOpacity;
-                fullyDrawn = false;
-            }
-            leftCol = levelBounds.x;
-            topRow = levelBounds.y;
-            rightCol = leftCol + levelBounds.width;
-            bottomRow = topRow + levelBounds.height;
-            tiles = level.tiles;
-            for (j = leftCol; j <= rightCol; j++) {
-                column = tiles[j];
-                for (k = topRow; k <= bottomRow; k++) {
-                    tile = column[k];
-                    if (tile.view) {
-                        opacity = tile.opacity;
-                        if (opacity !== 1) {
-                            ctx.save();
-                            ctx.globalAlpha *= opacity;
-                            fullyDrawn = false;
-                        }
-                        srcRect = tile.crop;
-                        tileBounds = tile.bounds;
-                        destX = dx + tileBounds.x * dw;
-                        destY = dy + tileBounds.y * dh / normHeight;
-                        destWidth = tileBounds.width * dw;
-                        destHeight = tileBounds.height * dh / normHeight;
-                        if (srcRect) {
-                            ctx.drawImage(tile.view,
-                                srcRect.x, srcRect.y, srcRect.width, srcRect.height,
-                                destX, destY, destWidth, destHeight
-                            );
-                        } else {
-                            ctx.drawImage(tile.view,
-                                destX, destY, destWidth, destHeight
-                            );
-                        }
-                        if (opacity !== 1) {
-                            ctx.restore();
-                        }
-                    } else {
-                        fullyDrawn = false;
-                    }
-                }
-            }
-            if (levelOpacity !== 1) {
-                ctx.restore();
-            }
-        }
-    }
-
-    // check whether the last level we drew matches the highest-resolution level
-    // that isn't already fading
-    if (maxLevel !== i - 1 || (levels[maxLevel] && !levels[maxLevel].visible)) {
+        ctx.globalAlpha *= levelOpacity;
         fullyDrawn = false;
-    }
-
-    // get rid of the clip path, if we used one
-    if (clipping) {
+      }
+      leftCol = levelBounds.x;
+      topRow = levelBounds.y;
+      rightCol = leftCol + levelBounds.width;
+      bottomRow = topRow + levelBounds.height;
+      tiles = level.tiles;
+      for (j = leftCol; j <= rightCol; j++) {
+        column = tiles[j];
+        for (k = topRow; k <= bottomRow; k++) {
+          tile = column[k];
+          if (tile.view) {
+            opacity = tile.opacity;
+            if (opacity !== 1) {
+              ctx.save();
+              ctx.globalAlpha *= opacity;
+              fullyDrawn = false;
+            }
+            srcRect = tile.crop;
+            tileBounds = tile.bounds;
+            destX = dx + tileBounds.x * dw;
+            destY = dy + (tileBounds.y * dh) / normHeight;
+            destWidth = tileBounds.width * dw;
+            destHeight = (tileBounds.height * dh) / normHeight;
+            if (srcRect) {
+              ctx.fillStyle = item.facets.background ?? "transparent";
+              ctx.fillRect(destX, destY, destWidth, destHeight);
+              ctx.drawImage(
+                tile.view,
+                srcRect.x,
+                srcRect.y,
+                srcRect.width,
+                srcRect.height,
+                destX,
+                destY,
+                destWidth,
+                destHeight
+              );
+            } else {
+              ctx.fillStyle = item.facets.background ?? "transparent";
+              ctx.fillRect(destX, destY, destWidth, destHeight);
+              ctx.drawImage(tile.view, destX, destY, destWidth, destHeight);
+            }
+            if (opacity !== 1) {
+              ctx.restore();
+            }
+          } else {
+            fullyDrawn = false;
+          }
+        }
+      }
+      if (levelOpacity !== 1) {
         ctx.restore();
+      }
     }
+  }
 
-    // let the caller know whether this image still needs to be redrawn
-    return fullyDrawn;
+  // check whether the last level we drew matches the highest-resolution level
+  // that isn't already fading
+  if (maxLevel !== i - 1 || (levels[maxLevel] && !levels[maxLevel].visible)) {
+    fullyDrawn = false;
+  }
+
+  // get rid of the clip path, if we used one
+  if (clipping) {
+    ctx.restore();
+  }
+
+  // let the caller know whether this image still needs to be redrawn
+  return fullyDrawn;
 };
