@@ -1,5 +1,5 @@
 // Copyright (c) Microsoft Corporation
-// All rights reserved. 
+// All rights reserved.
 // BSD License
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
@@ -179,7 +179,7 @@ SDImagePrototype.blur = 0;
 (function() {
     var head, style, text,
         selector = "sdimg",
-        styleRules = "display:inline-block",
+        styleRules = "display:inline-block; image-rendering: crisp-edges;",
         styleString = selector + " {" + styleRules + "}";
 
     if (document.createStyleSheet) {
@@ -516,7 +516,7 @@ SDImagePrototype.destroy = function () {
  * @return {bool} whether the image was drawn at full resolution, with no
  * tiles blending, fading, or loading
  */
-SDImage.drawImage = function (ctx, image, sx, sy, sw, sh, dx, dy, dw, dh) {
+SDImage.drawImage = function (ctx, image, sx, sy, sw, sh, dx, dy, dw, dh, item) {
     var normHeight,
         levels,
         i, j, k,

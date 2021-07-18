@@ -1,5 +1,5 @@
 // Copyright (c) Microsoft Corporation
-// All rights reserved. 
+// All rights reserved.
 // BSD License
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
@@ -133,7 +133,8 @@ var PivotViewer = Pivot.PivotViewer = function (canvas, container, frontLayer, b
     var frontZoomContainer;
     var dragCursorSet;
 
-    var itemBorder = 0.05;
+    // var itemBorder = 0.05;
+    var itemBorder = -0.01;
 
     var detailsEnabled = true;
 
@@ -1460,7 +1461,7 @@ var PivotViewer = Pivot.PivotViewer = function (canvas, container, frontLayer, b
             // Note that redraws are only done at 100% size (home zoom), so we don't
             // have to bother with transforming coordinates: the item's coordinates
             // are actually its coordinates in the canvas!
-
+// TODO Here we should pass the metadata down to our image drawe
             // first draw any items that are staying put
             if (usingSdimg || usingCanvas) {
                 for (j = activeItemsArr.length - 1; j >= 0; j--) {
@@ -1475,7 +1476,8 @@ var PivotViewer = Pivot.PivotViewer = function (canvas, container, frontLayer, b
                             for (i = source.length - 1; i >= 0; i--) {
                                 curSource = source[i];
                                 if (usingSdimg && sdimg) {
-                                    drawImage(ctx, sdimg, curSource.x, curSource.y, curSource.width, curSource.height);
+                                  console.log(item)
+                                    drawImage(ctx, sdimg, curSource.x, curSource.y, curSource.width, curSource.height, item);
                                 } else {
                                     drawCanvasItem(
                                         ctx,
@@ -1520,7 +1522,7 @@ var PivotViewer = Pivot.PivotViewer = function (canvas, container, frontLayer, b
                     width = curSource.width * regress + curDest.width * progress;
                     height = curSource.height * regress + curDest.height * progress;
                     if (usingSdimg && sdimg) {
-                        drawImage(ctx, sdimg, x, y, width, height);
+                        drawImage(ctx, sdimg, x, y, width, height, item);
                     } else if (usingHtml) {
                         setTransform(
                             item.html[currentTemplateLevel][i],
@@ -1658,7 +1660,7 @@ var PivotViewer = Pivot.PivotViewer = function (canvas, container, frontLayer, b
                                     anythingChanged =
                                         !drawImage(ctx, sdimg,
                                             itemBounds.x, itemBounds.y,
-                                            itemBounds.width, itemBounds.height) ||
+                                            itemBounds.width, itemBounds.height, item) ||
                                         anythingChanged;
                                 } else if (usingHtml) {
                                     html = item.html[currentTemplateLevel][i];
